@@ -2,9 +2,11 @@ package com.kenshin.search.core.index;
 
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.Date;
+import java.util.Collection;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -23,7 +25,7 @@ public class Indexer implements Runnable{
 	
 	//分词器
 	private final Analyzer analyzer;
-	private final int threshold = 128 * 1024; // 最大内存大小 256k
+	private final int threshold = 256 * 1024; // 最大内存大小 256k
 	private final double MAXRAMBUFFER = 16.0; //最大缓冲区256MB
 	private final LinkedBlockingQueue<Model> data;
 	private final String segPath;
@@ -33,6 +35,8 @@ public class Indexer implements Runnable{
 	private IndexWriter w;
 	private IndexWriterConfig config;
 	private Queue<Directory> segDirectories = new ConcurrentLinkedQueue<Directory>();
+	
+	private ExecutorService clearTask = Executors.newSingleThreadExecutor();
 
 	public Indexer(String indexName, Analyzer analyzer, LinkedBlockingQueue<Model> data, String segPath) throws IOException {
 		super();
@@ -44,7 +48,6 @@ public class Indexer implements Runnable{
 		this.config = new IndexWriterConfig(analyzer);
 		this.config.setRAMBufferSizeMB(MAXRAMBUFFER); //256MB缓冲区
 		this.w = new IndexWriter(directory, config);
-		
 //		System.out.println("<<<<<<< config : bufferSize = " + config.getRAMBufferSizeMB() + " | openModel " + config.getOpenMode());
 	}
 	
@@ -54,8 +57,11 @@ public class Indexer implements Runnable{
 			try {
 				if (readOnly) {
 //					System.out.println("<<<<<<<<<<<<<<<<<<<<<<<<< " + indexName + " is readOnly ");
-					indexFile(directory, indexName);
-					directory.close(); // 释放内存
+					Directory fsdDirectory = indexFile(directory, indexName);
+					synchronized (this) {
+						segDirectories.add(fsdDirectory);
+						directory.close(); // 释放内存
+					}
 					directory = new RAMDirectory(); //TODO重新申请内存块，看是否还有方法不需要重新初始化的
 					config = new IndexWriterConfig(analyzer); //重新获取writer
 					config.setRAMBufferSizeMB(MAXRAMBUFFER);
@@ -81,7 +87,7 @@ public class Indexer implements Runnable{
 	}
 
 	// 将RAM写入文件
-	private void indexFile(Directory directory, String indexName)
+	private Directory indexFile(Directory directory, String indexName)
 			throws IOException {
 		String fileName = segPath + indexName + "/" + indexName + "_" + System.currentTimeMillis();
 		Directory fsdDirectory = FSDirectory.open(Paths.get(fileName));
@@ -90,7 +96,8 @@ public class Indexer implements Runnable{
 		wf.addIndexes(directory);
 		wf.close();
 		
-		segDirectories.add(fsdDirectory);
+		return fsdDirectory;
+		
 	}
 
 	// 写入RAM
@@ -105,6 +112,16 @@ public class Indexer implements Runnable{
 //		System.out.println("<<<<<< now the field : " + model.getFile1());
 		doc.add(new TextField("file1", model.getFile1(), Field.Store.YES));
 		w.addDocument(doc);
+	}
+	
+	//这里只清理seg,并没有清理实际的索引文件
+	public void clearSegs(final Collection<Directory> directories) {
+		clearTask.submit(new Runnable() {
+			@Override
+			public void run() {
+				segDirectories.removeAll(directories);
+			}
+		});
 	}
 
 	public String getIndexName() {

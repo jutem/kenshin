@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -56,8 +57,8 @@ public class IndexerManager {
 		IndexWriterConfig config = new IndexWriterConfig(analyzer);
 		IndexWriter w = new IndexWriter(indexDirectory, config);
 		
-		List<Directory> segDirectories = new LinkedList<Directory>();
 		for(Indexer indexer : indexers) {
+			List<Directory> segDirectories = new LinkedList<Directory>();
 			Queue<Directory> segs = indexer.getSegDirectories();
 			//一直取到这部分seg取完，之后再新增的不管
 			//TODO 如果一个indexer生产seg的能力超过manager处理seg的能力将会导致死循环
@@ -67,9 +68,12 @@ public class IndexerManager {
 					break;
 				segDirectories.add(directory);
 			}
+			w.addIndexes(segDirectories.toArray(new Directory[0]));
+			w.commit();
+			
+			indexer.clearSegs(segDirectories);
 		}
 		
-		w.addIndexes(segDirectories.toArray(new Directory[0]));
 		w.close();
 	}
 	
