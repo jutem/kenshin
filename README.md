@@ -9,3 +9,6 @@ A：Lucene对于commit有如下描述。源码中并没有判断。Note that thi
 running background merges to finish. This may be a costly operation, so
 you should test the cost in your application and do it only when really
 necessary.
+
+2015.10.30
+结构上做了较大改造，可以参考doc下的文档
