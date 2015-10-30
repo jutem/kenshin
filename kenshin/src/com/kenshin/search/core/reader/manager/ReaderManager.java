@@ -1,6 +1,5 @@
 package com.kenshin.search.core.reader.manager;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,7 +20,8 @@ public class ReaderManager {
 	private Map<Long, DirectoryReader> segDirectoryReaders = new ConcurrentHashMap<Long, DirectoryReader>(); //segReader key:directoryId value:segDirectoryReader
 	private Map<String, DirectoryReader> ramDirectoryReaders = new ConcurrentHashMap<String, DirectoryReader>(); //ramReader key:indexerName value:ramDirectoryReader
 	
-	private Map<String, Boolean> filterMap = new ConcurrentHashMap<String, Boolean>(); //过滤的map
+	private Map<String, Boolean> ramModelIdMap = new ConcurrentHashMap<String, Boolean>(); //ram中存在的modelId, 用来过滤
+	private Map<String, Boolean> segModelIdMap = new ConcurrentHashMap<String, Boolean>(); //seg中存在的modelId， 用来过滤
 	
 	private final ResourcePool resourcePool;
 	
@@ -88,7 +88,7 @@ public class ReaderManager {
 				//TODO需要加锁
 				ramDirectoryReaders.put(directoryDetail.getIndexerName(), directoryReader);
 				for(String modelId : modelIds) {
-					filterMap.put(modelId, true);
+					ramModelIdMap.put(modelId, true);
 				}
 				
 				//通知已经可以解锁这个seg了
@@ -119,7 +119,8 @@ public class ReaderManager {
 				 * 解决当新的更新文档进来，但是这里却把他删除了的问题
 				 */
 				for(String modelId : directoryDetail.getModelIds()) {
-					filterMap.remove(modelId);
+					ramModelIdMap.remove(modelId);
+					segModelIdMap.put(modelId, true);
 				}
 				
 				//通知这个directory已经可以进入seg
