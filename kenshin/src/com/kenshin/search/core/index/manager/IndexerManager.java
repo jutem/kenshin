@@ -1,173 +1,127 @@
 package com.kenshin.search.core.index.manager;
 
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 
-import com.kenshin.search.core.index.Indexer;
-import com.kenshin.search.core.model.DirectoryPack;
+import com.kenshin.search.core.index.CoreIndexer;
+import com.kenshin.search.core.index.RamIndexer;
+import com.kenshin.search.core.index.SegIndexer;
+import com.kenshin.search.core.model.Model;
+import com.kenshin.search.core.model.directory.CoreDirectoryDetail;
+import com.kenshin.search.core.model.directory.RAMDirectoryDetail;
+import com.kenshin.search.core.model.directory.SegDirectoryDetail;
+import com.kenshin.search.core.resource.ResourcePool;
 
 public class IndexerManager {
 	
-	private static final int MAX_PERINDEX_SEG = 5000;//最多处理每个indexer中seg的个数
+	private static final Analyzer analyzer = new StandardAnalyzer(); //分词器
+	private static final String INDEXPATH = "D:/indexs/index/";
+	private static final String SEGPATH = "D:/indexs/seg/";
 	
-	//分词器
-	private final Analyzer analyzer;
-	private final String indexPath;
-	private final Directory indexDirectory;
+	//资源池
+	private final ResourcePool resourcePool;
 	
-	private final List<Indexer> indexers = new LinkedList<Indexer>();
-	private final ScheduledExecutorService pool = Executors.newSingleThreadScheduledExecutor(); //索引所有seg到总索引中
+	//默认启动数
+	private static final int MAX_RAM_INDEXER = 10; //启动索引者数量
+	private static final ExecutorService ramIndexerPool = Executors.newFixedThreadPool(MAX_RAM_INDEXER);
 	
-	public IndexerManager(Analyzer analyzer, String indexPath) throws IOException {
+	private static final int MAX_SEG_INDEXER = 10; //启动索引者数量
+	private static final ExecutorService segIndexerPool = Executors.newFixedThreadPool(MAX_SEG_INDEXER);
+	
+	public IndexerManager(ResourcePool resourcePool) {
 		super();
-		this.analyzer = analyzer;
-		this.indexPath = indexPath;
-		this.indexDirectory = FSDirectory.open(Paths.get(indexPath));
-		
-		pool.scheduleAtFixedRate(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					indexAll();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}, 1, 30, TimeUnit.SECONDS);
+		this.resourcePool = resourcePool;
 	}
 	
-	//将碎片文件索引到总文件里
-	private void indexAll() throws IOException {
-		
-//		Directory indexDirectory = FSDirectory.open(Paths.get(indexPath));
-		IndexWriterConfig config = new IndexWriterConfig(analyzer);
-		IndexWriter w = new IndexWriter(indexDirectory, config);
-		
-		for(Indexer indexer : indexers) {
-			List<Directory> segDirectories = new LinkedList<Directory>();
-			Queue<Directory> segs = indexer.getSegDirectories();
-			//一直取到这部分seg取完，之后再新增的不管
-			//TODO 如果一个indexer生产seg的能力超过manager处理seg的能力将会导致死循环
-			for(int i = 0 ; i < MAX_PERINDEX_SEG; i++) {
-				Directory directory = segs.poll();
-				if(directory == null)
-					break;
-				segDirectories.add(directory);
+	public void start() {
+		//启动ram
+		for(int i = 0; i < MAX_RAM_INDEXER; i++) {
+			RamIndexer indexer;
+			try {
+				indexer = new RamIndexer("RamIndexer_" + i, analyzer, this);
+				ramIndexerPool.submit(indexer);
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-			w.addIndexes(segDirectories.toArray(new Directory[0]));
-			w.commit();
-			
-			indexer.clearSegs(segDirectories);
 		}
 		
-		w.close();
-	}
-	
-	//indexer注册
-	public void registerIndexer(Indexer indexer) {
-		indexers.add(indexer);
-	}
-	
-	public List<Indexer> getIndexers() {
-		return indexers;
-	}
-	
-	public DirectoryPack getAllDirectory() {
+		//启动seg
+		for(int i = 0; i < MAX_SEG_INDEXER; i++) {
+			SegIndexer indexer;
+			indexer = new SegIndexer("SegIndexer_" + i, analyzer, this, SEGPATH);
+			segIndexerPool.submit(indexer);
+		}
 		
-		List<Directory> ramDirectories = getAllRamDirectory();
-		List<Directory> segDirectories = getAllSegSnapshot();
-		Directory coreDirectory = indexDirectory;
+		//启动core
+		try {
+			//本身初始化的时候会带有定时任务
+			CoreIndexer coreIndexer = new CoreIndexer("CoreIndexer_" + 1, analyzer, this, INDEXPATH);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
-		DirectoryPack directoryPack = new DirectoryPack();
-		directoryPack.setCoreDirectory(coreDirectory);
-		directoryPack.setRamDirectories(ramDirectories);
-		directoryPack.setSegDirectories(segDirectories);
-		
-		return directoryPack;
+		System.out.println("<<<<<<<<<<<<<<<<<<< all indexer have started");
+	}
+	/**************************************** indexer回调函数push ***************************************/
+	
+	/**
+	 * indexer推送需要写到seg中的ramDirectory
+	 */
+	public void pushReadyForSeg(RAMDirectoryDetail directoryDetail) {
+		resourcePool.pushReadyForSeg(directoryDetail);
 	}
 	
 	/**
-	 * 返回当前所有ramDirectory 
-	 * TODO 当ram close注意线程安全问题
+	 * indexer推送更新的ramDirectory
 	 */
-	public List<Directory> getAllRamDirectory() {
-		List<Directory> ramDirectories = new LinkedList<Directory>();
-		for(Indexer indexer : indexers) {
-			ramDirectories.add(indexer.getDirectory());
-		}
-		return ramDirectories;
+	public void pushUpdateRam(RAMDirectoryDetail directory) {
+		resourcePool.pushUpdateRam(directory);
 	}
 	
 	/**
-	 * 返回当前所有seg快照
-	 * TODO 不返回快照的话,这个segList会无限增长，当查询openReder的能力比seg增长的能力弱，会进入死循环
-	 * TODO 返回快照的时候防止seg已经被清理
+	 * segIndexer推送segDirectory
 	 */
-	public List<Directory> getAllSegSnapshot() {
-		List<Directory> segSnapshots = new LinkedList<Directory>();
-		for(Indexer indexer : indexers) {
-			Queue<Directory> q = indexer.getSegDirectories();
-			//addAll是将q toArray，所以并非原先q的引用
-			segSnapshots.addAll(q);
-		}
-		return segSnapshots;
+	public void pushReadyForCore(SegDirectoryDetail directoryDetail) {
+		resourcePool.pushReadyForCore(directoryDetail);
 	}
 	
-//	public static void main(String[] args) {
-//		List<Integer> l = new LinkedList<Integer>();
-//		l.add(1);
-//		Object[] a = l.toArray();
-//		System.out.println(Arrays.toString(a));
-//		l.add(2);
-//		System.out.println(Arrays.toString(a));
-//		
+	/**
+	 * 
+	 */
+	public void pushCoreDetail(CoreDirectoryDetail coreDirectoryDetail) {
+		resourcePool.setCoreDirectoryDetail(coreDirectoryDetail);
+	}
+	
+	/**
+	 * coreIndexer告知manger准备开始merge
+	 */
+//	public Queue<Directory> startMergeCore() {
+//		Queue<Directory> tmpData = segData;
+//		segData = new LinkedBlockingQueue<Directory>();
+//		return tmpData;
 //	}
 	
-//	public static void main(String[] args) throws IOException {
-//		Path path = Paths.get("D:/indexs/seg/");
-////		Iterable<Path> files = path.getFileSystem().getRootDirectories();
-//		
-//		DirectoryStream<Path> paths = Files.newDirectoryStream(path); 
-////		System.out.println("path : " + path.toUri());
-//		
-//		for(Path file : paths) {
-//			System.out.println(file.toUri());
-//			System.out.println(file.getParent() + " | " + file.getFileName());
-//		}
-//	}
+	/************************************** indexer回调函数take ************************************************/
+	public Model takeOriginData() {
+		return resourcePool.takeOriginData();
+	}
 	
-//	Directory indexDirectory = FSDirectory.open(Paths.get(indexPath));
-//	IndexWriterConfig config = new IndexWriterConfig(analyzer);
-//	IndexWriter w = new IndexWriter(indexDirectory, config);
-//	
-//	List<Directory> segDirectorys = new LinkedList<Directory>();
-//	
-//	for(Indexer indexer : indexers) {
-//		Path segIndexerPath = Paths.get(segPath + indexer.getIndexName());
-//		if(!Files.exists(segIndexerPath, LinkOption.NOFOLLOW_LINKS)) {
-//			continue;
-//		}
-//		DirectoryStream<Path> paths = Files.newDirectoryStream(segIndexerPath); 
-//		//遍历一个indexer产生的所有fsd
-//		//TODO 其中可能会有未写完的数据,那就可能会报错，记录这些数据
-//		for(Path path : paths) {
-//			Directory segDirectory = FSDirectory.open(path);
-//			segDirectorys.add(segDirectory);
-//		}
-//	}
+	public RAMDirectoryDetail takeToSeg() {
+		return resourcePool.takeToSeg();
+	}
+	
+	public SegDirectoryDetail takeToCore() {
+		return resourcePool.takeToCore();
+	}
+	
+	public Queue<SegDirectoryDetail> getAllSeg() {
+		return resourcePool.getAllSeg();
+	}
 	
 }

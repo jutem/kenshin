@@ -1,6 +1,8 @@
 package com.kenshin.search.core.model;
 
 public class Model {
+	
+	private String id;
 	private String file1;
 	private String file2;
 	private String file3;
@@ -9,6 +11,12 @@ public class Model {
 	private String file6;
 	private String file7;
 	
+	public String getId() {
+		return id;
+	}
+	public void setId(String id) {
+		this.id = id;
+	}
 	public String getFile1() {
 		return file1;
 	}

@@ -1,4 +1,4 @@
-package com.kenshin.search.core.index;
+package com.kenshin.search.core.bak;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -22,7 +22,7 @@ import org.apache.lucene.store.RAMDirectory;
 
 import com.kenshin.search.core.model.Model;
 
-public class Indexer implements Runnable{
+public class RamIndexerBak implements Runnable{
 	
 	//分词器
 	private final Analyzer analyzer;
@@ -40,7 +40,7 @@ public class Indexer implements Runnable{
 	
 	private ExecutorService clearTask = Executors.newSingleThreadExecutor();
 
-	public Indexer(String indexName, Analyzer analyzer, LinkedBlockingQueue<Model> data, String segPath) throws IOException {
+	public RamIndexerBak(String indexName, Analyzer analyzer, LinkedBlockingQueue<Model> data, String segPath) throws IOException {
 		super();
 		this.indexName = indexName;
 		this.analyzer = analyzer;

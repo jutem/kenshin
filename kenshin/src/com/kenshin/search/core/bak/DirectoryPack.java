@@ -1,4 +1,4 @@
-package com.kenshin.search.core.model;
+package com.kenshin.search.core.bak;
 
 import java.util.LinkedList;
 import java.util.List;

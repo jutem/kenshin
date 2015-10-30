@@ -1,12 +1,15 @@
-package com.kenshin.search.core.search;
+package com.kenshin.search.core.bak;
 
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.IndexSearcher;
@@ -16,36 +19,40 @@ import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 
-public class CoreSearcher extends AbstractSearcher {
+public class SegSearcher extends AbstractSearcher {
 	
-	private Directory coreDirectory;
+	private List<Directory> segDirectories;
 	private Map<String, String> searchMap;
 	
-	private static final String CORE_NAME = "core_search_";
-	
+	private static final String SEG_NAME = "seg_search_";
 	/**
 	 * @param searchMap key:field value:query
-	 * @param ramDirectories
+	 * @param segDirectories
 	 */
-	public CoreSearcher(String searchName, Map<String, String> searchMap, Directory coreDirectory) {
-		super(CORE_NAME + searchName);
+	public SegSearcher(String searchName, Map<String, String> searchMap, List<Directory> segDirectories) {
+		super(SEG_NAME + searchName);
 		this.searchMap = searchMap;
-		this.coreDirectory = coreDirectory;
+		this.segDirectories = segDirectories;
 	}
 	
 	public void Query() throws ParseException, IOException {
 		
 		Query q = MultiFieldQueryParser.parse(searchMap.values().toArray(new String[0]), searchMap.keySet().toArray(new String[0]), analyzer);
-//		System.out.println("<<<<<<<<<<<<<<<<<<< search direcotry : " + Arrays.toString(directory.listAll()));
-		IndexReader reader = null;
-		try {
-			reader = DirectoryReader.open(coreDirectory);
-		} catch (AlreadyClosedException | IndexNotFoundException e) {
-//			e.printStackTrace();
-			return;
+		
+		List<IndexReader> readers = new LinkedList<IndexReader>();
+		for(Directory directory : segDirectories) {
+//			System.out.println("<<<<<<<<<<<<<<<<<<< search direcotry : " + Arrays.toString(directory.listAll()));
+			try {
+				IndexReader reader = DirectoryReader.open(directory);
+				readers.add(reader);
+			} catch (AlreadyClosedException | IndexNotFoundException e) {
+//				e.printStackTrace();
+			}
 		}
+		
+		MultiReader multiReader = new MultiReader(readers.toArray(new IndexReader[0]));
 		TopScoreDocCollector collector = TopScoreDocCollector.create(hitsPerPage);
-		IndexSearcher searcher = new IndexSearcher(reader);
+		IndexSearcher searcher = new IndexSearcher(multiReader);
 		searcher.search(q, collector);
 
 		ScoreDoc[] hits = collector.topDocs().scoreDocs;
@@ -55,7 +62,7 @@ public class CoreSearcher extends AbstractSearcher {
 			Document d = searcher.doc(docId);
 		}
 		
-		reader.close();
+		multiReader.close();
 	}
 	
 }

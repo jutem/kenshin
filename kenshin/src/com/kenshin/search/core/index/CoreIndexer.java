@@ -3,8 +3,11 @@ package com.kenshin.search.core.index;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexWriter;
@@ -12,55 +15,57 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
-public class CoreIndexer {
+import com.kenshin.search.core.index.manager.IndexerManager;
+import com.kenshin.search.core.model.directory.CoreDirectoryDetail;
+import com.kenshin.search.core.model.directory.SegDirectoryDetail;
+import com.kenshin.search.core.resource.ResourcePool;
+
+public class CoreIndexer extends AbstractIndexer {
 	
-//	private static final int MAX_PERINDEX_SEG = 5000;//最多处理每个indexer中seg的个数
-//	
-//	//分词器
-//	private final Analyzer analyzer;
-//	private final String indexPath;
-//	
-//	//将碎片文件索引到总文件里
-//	private void indexAll() throws IOException {
-//		
-////			Directory indexDirectory = FSDirectory.open(Paths.get(indexPath));
-////			IndexWriterConfig config = new IndexWriterConfig(analyzer);
-////			IndexWriter w = new IndexWriter(indexDirectory, config);
-////			
-////			List<Directory> segDirectorys = new LinkedList<Directory>();
-////			
-////			for(Indexer indexer : indexers) {
-////				Path segIndexerPath = Paths.get(segPath + indexer.getIndexName());
-////				if(!Files.exists(segIndexerPath, LinkOption.NOFOLLOW_LINKS)) {
-////					continue;
-////				}
-////				DirectoryStream<Path> paths = Files.newDirectoryStream(segIndexerPath); 
-////				//遍历一个indexer产生的所有fsd
-////				//TODO 其中可能会有未写完的数据,那就可能会报错，记录这些数据
-////				for(Path path : paths) {
-////					Directory segDirectory = FSDirectory.open(path);
-////					segDirectorys.add(segDirectory);
-////				}
-////			}
-//		
-//		Directory indexDirectory = FSDirectory.open(Paths.get(indexPath));
-//		IndexWriterConfig config = new IndexWriterConfig(analyzer);
-//		IndexWriter w = new IndexWriter(indexDirectory, config);
-//		
-//		List<Directory> segDirectories = new LinkedList<Directory>();
-//		for(Indexer indexer : indexers) {
-//			Queue<Directory> segs = indexer.getSegDirectories();
-//			//一直取到这部分seg取完，之后再新增的不管
-//			//TODO 如果一个indexer生产seg的能力超过manager处理seg的能力将会导致死循环
-//			for(int i = 0 ; i < MAX_PERINDEX_SEG; i++) {
-//				Directory directory = segs.poll();
-//				if(directory == null)
-//					break;
-//				segDirectories.add(directory);
-//			}
-//		}
-//		
-//		w.addIndexes(segDirectories.toArray(new Directory[0]));
-//		w.close();
-//	}
+	private static final int perTime = 30; //间隔时间
+	
+	private final Directory coreDirectory; //coreIndex的地址
+	private final Analyzer analyzer;
+	private final ScheduledExecutorService pool = Executors.newSingleThreadScheduledExecutor();
+	
+	public CoreIndexer(String indexName, Analyzer analyzer, final IndexerManager indexerManager, String indexPath) throws IOException {
+		super(indexName, indexerManager);
+		this.analyzer = analyzer;
+		this.coreDirectory = FSDirectory.open(Paths.get(indexPath));
+		
+		pool.scheduleAtFixedRate(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					indexAll();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}, 1, perTime, TimeUnit.SECONDS);
+	}
+	
+	//将碎片文件索引到总文件里
+	private void indexAll() throws IOException {
+		
+		Queue<SegDirectoryDetail> directoryDetails = indexerManager.getAllSeg();
+		
+		Queue<Directory> segDirectories = new LinkedList<Directory>();
+		for(SegDirectoryDetail segDirectoryDetail : directoryDetails) {
+			segDirectories.add(segDirectoryDetail.getDirectory());
+		}
+		
+		IndexWriterConfig config = new IndexWriterConfig(analyzer);
+		IndexWriter w = new IndexWriter(coreDirectory, config);
+		
+		w.addIndexes(segDirectories.toArray(new Directory[0]));
+		w.commit();
+		w.close();
+		
+		CoreDirectoryDetail coreDirectoryDetail = new CoreDirectoryDetail(indexName, coreDirectory, directoryDetails);
+		
+		
+		indexerManager.pushCoreDetail(coreDirectoryDetail);
+	}
+
 }

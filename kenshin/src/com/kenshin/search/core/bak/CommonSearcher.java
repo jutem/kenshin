@@ -1,10 +1,10 @@
-package com.kenshin.search.core.search;
+package com.kenshin.search.core.bak;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -20,34 +20,46 @@ import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 
+import com.kenshin.search.core.index.RamIndexer;
+import com.kenshin.search.core.reader.manager.ReaderManager;
+
+/**
+ * 主要负责组装query提交给manager去搜索
+ * @author chendawei
+ *
+ */
 public class CommonSearcher extends AbstractSearcher {
 	
-	private List<Directory> directories;
+	private ReaderManager searcherManager;
+	
+	private List<RamIndexer> indexers;
 	private Map<String, String> searchMap;
 	
-	private static final String COMMON_NAME = "common_search_";
+	private static final String INDEX_SEARCHER = "indexer_search_";
+	
 	
 	/**
 	 * @param searchMap key:field value:query
 	 * @param directories
 	 */
-	public CommonSearcher(String searchName, Map<String, String> searchMap, List<Directory> directories) {
-		super(COMMON_NAME + searchName);
+	public CommonSearcher(String searchName, Map<String, String> searchMap, List<RamIndexer> indexers, ReaderManager searcherManager) {
+		super(INDEX_SEARCHER + searchName);
 		this.searchMap = searchMap;
-		this.directories = directories;
+		this.indexers = indexers;
+		this.searcherManager = searcherManager;
 	}
 	
 	public void Query() throws ParseException, IOException {
 		
-		System.out.println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< search directories size : " + directories.size());
-		
 		Query q = MultiFieldQueryParser.parse(searchMap.values().toArray(new String[0]), searchMap.keySet().toArray(new String[0]), analyzer);
 		
 		List<IndexReader> readers = new LinkedList<IndexReader>();
-		for(Directory directory : directories) {
+		for(RamIndexer indexer : indexers) {
 //			System.out.println("<<<<<<<<<<<<<<<<<<< search direcotry : " + Arrays.toString(directory.listAll()));
 			try {
-				IndexReader reader = DirectoryReader.open(directory);
+				IndexReader ramReader = DirectoryReader.open(indexer.getReadDirectory());
+				Queue<Directory> segsReader = indexer.getSegDirectories(); 
+				
 				readers.add(reader);
 			} catch (AlreadyClosedException | IndexNotFoundException e) {
 //				e.printStackTrace();

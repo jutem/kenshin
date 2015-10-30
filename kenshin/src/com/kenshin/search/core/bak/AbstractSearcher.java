@@ -1,4 +1,4 @@
-package com.kenshin.search.core.search;
+package com.kenshin.search.core.bak;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
