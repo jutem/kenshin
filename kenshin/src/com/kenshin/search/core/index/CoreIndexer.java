@@ -49,6 +49,8 @@ public class CoreIndexer extends AbstractIndexer {
 	private void indexAll() throws IOException {
 		
 		Queue<SegDirectoryDetail> directoryDetails = indexerManager.getAllSeg();
+		if(directoryDetails == null || directoryDetails.size() == 0)
+			return;
 		
 		Queue<Directory> segDirectories = new LinkedList<Directory>();
 		for(SegDirectoryDetail segDirectoryDetail : directoryDetails) {

@@ -1,7 +1,6 @@
 package com.kenshin.search.core.index.manager;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

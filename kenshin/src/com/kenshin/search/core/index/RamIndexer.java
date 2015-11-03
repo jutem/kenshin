@@ -16,8 +16,8 @@ import com.kenshin.search.core.model.directory.RAMDirectoryDetail;
 
 public class RamIndexer extends AbstractIndexer implements Runnable{
 	
-//	private static final int threshold = 256 * 1024; // 最大内存大小 256k
-	private static final int threshold = 0;
+	private static final int threshold = 10 * 1024; // 最大内存大小 256k
+//	private static final int threshold = 0;
 	private static final double MAXRAMBUFFER = 256.0; //最大缓冲区256MB
 	
 	private RAMDirectoryDetail directoryDetail = new RAMDirectoryDetail(indexName);
@@ -71,6 +71,7 @@ public class RamIndexer extends AbstractIndexer implements Runnable{
 	private void addDoc(IndexWriter w, Model model) throws IOException {
 		Document doc = new Document();
 //		System.out.println("<<<<<< now the field : " + model.getFile1());
+		doc.add(new TextField("id", model.getId(), Field.Store.YES));
 		doc.add(new TextField("file1", model.getFile1(), Field.Store.YES));
 		w.addDocument(doc);
 	}

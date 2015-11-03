@@ -1,9 +1,7 @@
 package com.kenshin.search.core.reader.filter;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.logging.Logger;
+import java.util.Map;
 
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
@@ -12,26 +10,25 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
-import com.kenshin.search.core.model.Model;
-
 public class IFilterLeafReader extends FilterLeafReader {
 	
-	private Collection<String> deleteQueue;
+	private Map<String, Boolean> deleteMap;
 	private int cardinality;
 
-	public IFilterLeafReader(LeafReader in, Collection<String> deleteQueue) {
+	public IFilterLeafReader(LeafReader in, Map<String, Boolean> deleteMap) {
 		super(in);
-		this.deleteQueue = deleteQueue;
+		this.deleteMap = deleteMap;
 	}
 
 	@Override
 	public Bits getLiveDocs() {
 		ensureOpen();
 		FixedBitSet bits = (FixedBitSet) super.getLiveDocs();
-		for(String id : deleteQueue) {
+		System.out.println("<<<<<<<<<<<<<<<<< bits : " + bits);
+		for(Map.Entry<String, Boolean> entry : deleteMap.entrySet()) {
 			PostingsEnum pe;
 			try {
-				pe = in.postings(new Term("id", id));
+				pe = in.postings(new Term("id", entry.getKey()));
 				if (pe != null && bits != null) {
 					bits.set(pe.nextDoc());
 					cardinality ++;

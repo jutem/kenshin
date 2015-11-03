@@ -80,7 +80,9 @@ public class ResourcePool {
 	 * 替换core
 	 */
 	public void setCoreDirectoryDetail(CoreDirectoryDetail coreDirectoryDetail) {
-		System.out.println("<<<<<<<<<<<<<<<<<<<<<<< directory in coreDetail : " + coreDirectoryDetail.getId());
+		if(coreDirectoryDetail != null) {
+			System.out.println("<<<<<<<<<<<<<<<<<<<<<<< directory in coreDetail : " + coreDirectoryDetail.getId());
+		}
 		this.coreDirectoryDetail = coreDirectoryDetail;
 	}
 
