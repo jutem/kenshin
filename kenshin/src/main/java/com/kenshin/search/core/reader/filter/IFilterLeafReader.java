@@ -3,6 +3,7 @@ package com.kenshin.search.core.reader.filter;
 import java.io.IOException;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.PostingsEnum;
@@ -10,7 +11,11 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
+import com.kenshin.search.core.core.KenshiCore;
+
 public class IFilterLeafReader extends FilterLeafReader {
+	
+	private static final Logger logger = Logger.getLogger(KenshiCore.class);
 	
 	private Map<String, Boolean> deleteMap;
 	private int cardinality;
@@ -24,7 +29,7 @@ public class IFilterLeafReader extends FilterLeafReader {
 	public Bits getLiveDocs() {
 		ensureOpen();
 		FixedBitSet bits = (FixedBitSet) super.getLiveDocs();
-		System.out.println("<<<<<<<<<<<<<<<<< bits : " + bits);
+		logger.debug("<<<<<<<<<<<<<<<<< bits : " + bits);
 		for(Map.Entry<String, Boolean> entry : deleteMap.entrySet()) {
 			PostingsEnum pe;
 			try {

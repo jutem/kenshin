@@ -3,6 +3,7 @@ package com.kenshin.search.core.index;
 import java.io.IOException;
 import java.nio.file.Paths;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -14,6 +15,8 @@ import com.kenshin.search.core.model.directory.RAMDirectoryDetail;
 import com.kenshin.search.core.model.directory.SegDirectoryDetail;
 
 public class SegIndexer extends AbstractIndexer implements Runnable{
+	
+	private static final Logger logger = Logger.getLogger(SegIndexer.class);
 	
 	private final String segPath; //seg保存地址
 	private Analyzer analyzer;
@@ -44,8 +47,8 @@ public class SegIndexer extends AbstractIndexer implements Runnable{
 	private Directory indexFile(Directory directory)
 			throws IOException {
 		String fileName = segPath + indexName + "/" + indexName + "_" + System.currentTimeMillis();
-		System.out.println("<<<<<<<<<<<<<<<< path is : " + fileName);
-		System.out.println("<<<<<<<<<<<<<<<< segPath : " + segPath + " indexName " + indexName);
+		logger.debug("<<<<<<<<<<<<<<<< path is : " + fileName);
+		logger.debug("<<<<<<<<<<<<<<<< segPath : " + segPath + " indexName " + indexName);
 		//TODO fsd open可以预先生成
 		Directory fsdDirectory = FSDirectory.open(Paths.get(fileName));
 		IndexWriterConfig config = new IndexWriterConfig(analyzer);

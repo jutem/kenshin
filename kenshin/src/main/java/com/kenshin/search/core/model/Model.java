@@ -1,8 +1,10 @@
 package com.kenshin.search.core.model;
 
+import com.kenshin.search.core.util.CommonUtil;
+
 public class Model {
 	
-	private String id;
+	private String id = String.valueOf(CommonUtil.getUniqueId());
 	private String file1;
 	private String file2;
 	private String file3;

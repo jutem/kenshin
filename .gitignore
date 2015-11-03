@@ -45,3 +45,9 @@ kenshin/.settings/org.eclipse.core.resources.prefs
 kenshin/.settings/org.eclipse.jdt.core.prefs
 *.classpath
 kenshin/.project
+kenshin/pom.xml
+kenshin/target
+kenshin/pom.xml
+kenshin/pom.xml
+kenshin/src/main/webapp/WEB-INF/classes/log4j.properties
+kenshin/pom.xml

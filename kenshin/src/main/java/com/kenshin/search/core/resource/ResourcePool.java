@@ -5,17 +5,23 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Component;
+
 import com.kenshin.search.core.model.Model;
 import com.kenshin.search.core.model.directory.CoreDirectoryDetail;
 import com.kenshin.search.core.model.directory.RAMDirectoryDetail;
 import com.kenshin.search.core.model.directory.SegDirectoryDetail;
+import com.kenshin.search.core.reader.manager.ReaderManager;
 
 /**
  * 资源池
- * 
  * ram的同一个directory是有可能同时出现updateData和ramData中
  */
+@Component
 public class ResourcePool {
+	
+	private static final Logger logger = Logger.getLogger(ResourcePool.class);
 	
 	//数据源
 	private LinkedBlockingQueue<Model> originData = new LinkedBlockingQueue<Model>(); //原始数据 
@@ -40,7 +46,7 @@ public class ResourcePool {
 	 * 推送数据到工作队列
 	 */
 	public void pushOriginData(Model model) {
-		System.out.println("<<<<<<<<<<<<<<<<<<<<<<< model in origin : " + model.getId());
+		logger.debug("<<<<<<<<<<<<<<<<<<<<<<< model in origin : " + model.getId());
 		originData.add(model);
 	}
 	
@@ -48,7 +54,7 @@ public class ResourcePool {
 	 * indexer推送需要写到seg中的ramDirectory
 	 */
 	public void pushReadyForSeg(RAMDirectoryDetail directory) {
-		System.out.println("<<<<<<<<<<<<<<<<<<<<<<< directory in ready for seg : " + directory.getId());
+		logger.debug("<<<<<<<<<<<<<<<<<<<<<<< directory in ready for seg : " + directory.getId());
 		readyForSeg.put(directory.getId(), directory);
 	}
 	
@@ -56,7 +62,7 @@ public class ResourcePool {
 	 * indexer推送更新的ramDirectory
 	 */
 	public void pushUpdateRam(RAMDirectoryDetail directoryDetail) {
-		System.out.println("<<<<<<<<<<<<<<<<<<<<<<< directory in update ram : " + directoryDetail.getId());
+		logger.debug("<<<<<<<<<<<<<<<<<<<<<<< directory in update ram : " + directoryDetail.getId());
 		updateData.add(directoryDetail);
 	}
 	
@@ -64,7 +70,7 @@ public class ResourcePool {
 	 * segIndexer推送segDirectory
 	 */
 	public void pushReadyForCore(SegDirectoryDetail directoryDetail) {
-		System.out.println("<<<<<<<<<<<<<<<<<<<<<<< directory in ready for core : " + directoryDetail.getId());
+		logger.debug("<<<<<<<<<<<<<<<<<<<<<<< directory in ready for core : " + directoryDetail.getId());
 		readyForCore.add(directoryDetail);
 	}
 	
@@ -72,7 +78,7 @@ public class ResourcePool {
 	 * seg已经准备就绪
 	 */
 	public void toCore(SegDirectoryDetail segDirectoryDetail) {
-		System.out.println("<<<<<<<<<<<<<<<<<<<<<<< directory in to core : " + segDirectoryDetail.getId());
+		logger.debug("<<<<<<<<<<<<<<<<<<<<<<< directory in to core : " + segDirectoryDetail.getId());
 		toCore.add(segDirectoryDetail);
 	}
 	
@@ -81,7 +87,7 @@ public class ResourcePool {
 	 */
 	public void setCoreDirectoryDetail(CoreDirectoryDetail coreDirectoryDetail) {
 		if(coreDirectoryDetail != null) {
-			System.out.println("<<<<<<<<<<<<<<<<<<<<<<< directory in coreDetail : " + coreDirectoryDetail.getId());
+			logger.debug("<<<<<<<<<<<<<<<<<<<<<<< directory in coreDetail : " + coreDirectoryDetail.getId());
 		}
 		this.coreDirectoryDetail = coreDirectoryDetail;
 	}
@@ -151,7 +157,7 @@ public class ResourcePool {
 	public void unLockDirectoryDetail(long directoryId) {
 		RAMDirectoryDetail ramDirectoryDetail = readyForSeg.remove(directoryId);
 		if(ramDirectoryDetail != null) {
-			System.out.println("<<<<<<<<<<<<<<<<<<<<<<< directory in to seg : " + directoryId);
+			logger.debug("<<<<<<<<<<<<<<<<<<<<<<< directory in to seg : " + directoryId);
 			ramDirectoryDetail.setReady(true);
 			toSeg.add(ramDirectoryDetail);
 		}

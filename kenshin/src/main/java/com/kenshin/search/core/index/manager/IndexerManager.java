@@ -5,6 +5,7 @@ import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 
@@ -19,9 +20,11 @@ import com.kenshin.search.core.resource.ResourcePool;
 
 public class IndexerManager {
 	
+	private static final Logger logger = Logger.getLogger(IndexerManager.class);
+	
 	private static final Analyzer analyzer = new StandardAnalyzer(); //分词器
-	private static final String INDEXPATH = "D:/indexs/index/";
-	private static final String SEGPATH = "D:/indexs/seg/";
+	private static final String INDEXPATH = "/home/kenshin/indexs/core/";
+	private static final String SEGPATH = "/home/kenshin/indexs/segs/";
 	
 	//资源池
 	private final ResourcePool resourcePool;
@@ -65,7 +68,7 @@ public class IndexerManager {
 			e.printStackTrace();
 		}
 		
-		System.out.println("<<<<<<<<<<<<<<<<<<< all indexer have started");
+		logger.info("<<<<<<<<<<<<<<<<<<< all indexer have started");
 	}
 	/**************************************** indexer回调函数push ***************************************/
 	

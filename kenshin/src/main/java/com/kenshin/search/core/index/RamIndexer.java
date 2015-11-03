@@ -2,6 +2,7 @@ package com.kenshin.search.core.index;
 
 import java.io.IOException;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -15,6 +16,8 @@ import com.kenshin.search.core.model.Model;
 import com.kenshin.search.core.model.directory.RAMDirectoryDetail;
 
 public class RamIndexer extends AbstractIndexer implements Runnable{
+	
+	private static final Logger logger = Logger.getLogger(RamIndexer.class);
 	
 	private static final int threshold = 10 * 1024; // 最大内存大小 256k
 //	private static final int threshold = 0;
@@ -33,7 +36,7 @@ public class RamIndexer extends AbstractIndexer implements Runnable{
 		this.config = new IndexWriterConfig(analyzer);
 		this.config.setRAMBufferSizeMB(MAXRAMBUFFER); //256MB缓冲区
 		this.w = new IndexWriter(directoryDetail.getDirectory(), config);
-//		System.out.println("<<<<<<< config : bufferSize = " + config.getRAMBufferSizeMB() + " | openModel " + config.getOpenMode());
+//		logger.debug("<<<<<<< config : bufferSize = " + config.getRAMBufferSizeMB() + " | openModel " + config.getOpenMode());
 	}
 	
 	public void run() {
@@ -46,7 +49,7 @@ public class RamIndexer extends AbstractIndexer implements Runnable{
 				directoryDetail.addModelIds(model.getId());
 				indexerManager.pushUpdateRam(directoryDetail);
 				if (directory.ramBytesUsed() > threshold) { //变为只读模式的时候释放writer
-					System.out.println("<<<<<<< ram byte used : " + directory.ramBytesUsed());
+					logger.debug("<<<<<<< ram byte used : " + directory.ramBytesUsed());
 					w.close();
 					indexerManager.pushReadyForSeg(directoryDetail);
 					directoryDetail = new RAMDirectoryDetail(indexName);
@@ -70,7 +73,7 @@ public class RamIndexer extends AbstractIndexer implements Runnable{
 
 	private void addDoc(IndexWriter w, Model model) throws IOException {
 		Document doc = new Document();
-//		System.out.println("<<<<<< now the field : " + model.getFile1());
+//		logger.debug("<<<<<< now the field : " + model.getFile1());
 		doc.add(new TextField("id", model.getId(), Field.Store.YES));
 		doc.add(new TextField("file1", model.getFile1(), Field.Store.YES));
 		w.addDocument(doc);

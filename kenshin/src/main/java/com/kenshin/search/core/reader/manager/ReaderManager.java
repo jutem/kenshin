@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -29,6 +30,8 @@ import com.kenshin.search.core.reader.reader.CommonSearcher;
 import com.kenshin.search.core.resource.ResourcePool;
 
 public class ReaderManager {
+	
+	private static final Logger logger = Logger.getLogger(ReaderManager.class);
 	
 	private final Analyzer analyzer = new StandardAnalyzer(); //分词器
 	
@@ -86,7 +89,7 @@ public class ReaderManager {
 			}
 		});
 		
-		System.out.println("<<<<<<<<<<<<<<<<<<< all readOpen have started");
+		logger.info("<<<<<<<<<<<<<<<<<<< all readOpen have started");
 	}
 	
 	/**
@@ -219,9 +222,9 @@ public class ReaderManager {
 	
 	/************************************** 测试代码 *******************************************/
 //	ramModelIdMap.put("1", true);
-//	System.out.println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< ramModelIdMap is : " + ramModelIdMap.size() + " map : " + ramModelIdMap.get("1"));
+//	logger.debug("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< ramModelIdMap is : " + ramModelIdMap.size() + " map : " + ramModelIdMap.get("1"));
 //	for(Map.Entry<String, DirectoryReader> entry : ramDirectoryReaders.entrySet()) {
-//		System.out.println("<<<<<<<<<<<<<<<<<<<<<<<<<< entry value :" + entry.getValue());
+//		logger.debug("<<<<<<<<<<<<<<<<<<<<<<<<<< entry value :" + entry.getValue());
 //		DirectoryReader ramFilterReader = new IFilterDirectoryReader(entry.getValue(), new ISubReaderWrapper(ramModelIdMap));
 ////		IFilterDirectoryReader ramFilterReader = new IFilterDirectoryReader(entry.getValue(), new ISubReaderWrapper(ramModelIdMap));
 ////		DirectoryReader test = ramFilterReader.doWrapDirectoryReader(entry.getValue(), ramModelIdMap);
