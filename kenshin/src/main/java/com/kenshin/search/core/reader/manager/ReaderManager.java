@@ -45,10 +45,10 @@ public class ReaderManager {
 	private final ResourcePool resourcePool;
 	
 	//默认启动数
-	private static final int MAX_RAM_READER = 10; //启动open ramdirectory
+	private static final int MAX_RAM_READER = Runtime.getRuntime().availableProcessors() + 1; //启动open ramdirectory
 	private static final ExecutorService ramReaderPool = Executors.newFixedThreadPool(MAX_RAM_READER);
 		
-	private static final int MAX_SEG_READER = 10; //启动open segdirectory
+	private static final int MAX_SEG_READER = 2 * Runtime.getRuntime().availableProcessors(); //启动open segdirectory
 	private static final ExecutorService segReaderPool = Executors.newFixedThreadPool(MAX_SEG_READER);
 	
 	private final ExecutorService coreReaderPool = Executors.newSingleThreadExecutor();

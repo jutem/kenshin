@@ -162,5 +162,9 @@ public class ResourcePool {
 			toSeg.add(ramDirectoryDetail);
 		}
 	}
+
+	public LinkedBlockingQueue<Model> getOriginData() {
+		return originData;
+	}
 	
 }

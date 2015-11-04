@@ -1,9 +1,12 @@
 package com.kenshin.search.core.index.manager;
 
 import java.io.IOException;
+import java.lang.Character.UnicodeScript;
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
@@ -22,19 +25,22 @@ public class IndexerManager {
 	
 	private static final Logger logger = Logger.getLogger(IndexerManager.class);
 	
-	private static final Analyzer analyzer = new StandardAnalyzer(); //分词器
-	private static final String INDEXPATH = "/home/kenshin/indexs/core/";
-	private static final String SEGPATH = "/home/kenshin/indexs/segs/";
+	private final Analyzer analyzer = new StandardAnalyzer(); //分词器
+	private final String INDEXPATH = "/home/kenshin/indexs/core/";
+	private final String SEGPATH = "/home/kenshin/indexs/segs/";
 	
 	//资源池
 	private final ResourcePool resourcePool;
 	
 	//默认启动数
-	private static final int MAX_RAM_INDEXER = 10; //启动索引者数量
-	private static final ExecutorService ramIndexerPool = Executors.newFixedThreadPool(MAX_RAM_INDEXER);
+	private final int MAX_RAM_INDEXER = Runtime.getRuntime().availableProcessors() + 1; //启动索引者数量
+	private final ExecutorService ramIndexerPool = Executors.newFixedThreadPool(MAX_RAM_INDEXER);
 	
-	private static final int MAX_SEG_INDEXER = 10; //启动索引者数量
-	private static final ExecutorService segIndexerPool = Executors.newFixedThreadPool(MAX_SEG_INDEXER);
+	private final int MAX_SEG_INDEXER = 2 * Runtime.getRuntime().availableProcessors(); //启动索引者数量
+	private final ExecutorService segIndexerPool = Executors.newFixedThreadPool(MAX_SEG_INDEXER);
+	
+	//统计已经做了多少条ram索引
+	private static final AtomicInteger count = new AtomicInteger(0);
 	
 	public IndexerManager(ResourcePool resourcePool) {
 		super();
@@ -46,7 +52,7 @@ public class IndexerManager {
 		for(int i = 0; i < MAX_RAM_INDEXER; i++) {
 			RamIndexer indexer;
 			try {
-				indexer = new RamIndexer("RamIndexer_" + i, analyzer, this);
+				indexer = new RamIndexer("RamIndexer_" + i, analyzer, this, count);
 				ramIndexerPool.submit(indexer);
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -67,6 +73,15 @@ public class IndexerManager {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		
+		//启动监测
+		Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new Runnable() {
+			@Override
+			public void run() {
+				logger.info("<<<<<<<<<<<<<<<<<<<<<<<<<<<< ramIndexe has done " + count.get() + 
+						" | orgigin data " + resourcePool.getOriginData().size());
+			}
+		}, 1, 5, TimeUnit.SECONDS);
 		
 		logger.info("<<<<<<<<<<<<<<<<<<< all indexer have started");
 	}
