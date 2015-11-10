@@ -15,34 +15,31 @@ import org.apache.lucene.store.RAMDirectory;
 import com.kenshin.search.core.disruptor.event.ModelEvent;
 import com.kenshin.search.core.model.Model;
 import com.kenshin.search.core.model.directory.RAMDirectoryDetail;
-import com.kenshin.search.core.resource.DisruptorResourcePool;
+import com.kenshin.search.core.resource.ResourcePool;
 import com.lmax.disruptor.EventHandler;
 
 public class RamIndexer extends AbstractIndexer implements EventHandler<ModelEvent>{
 	
 	private static final Logger logger = Logger.getLogger(RamIndexer.class);
 	
-	private static final int threshold = 256 * 1024; // 最大内存大小 256k
+//	private static final int threshold = 256 * 1024; // 最大内存大小 256k
+	private static final int threshold = 0;
 	private static final double MAXRAMBUFFER = 256.0; //最大缓冲区256MB
 	
 	private RAMDirectoryDetail directoryDetail = new RAMDirectoryDetail(indexName);
 	
-	private Analyzer analyzer;
 	private IndexWriter w;
 	private IndexWriterConfig config;
 	
 	private final AtomicInteger count; //统计完成的索引数量
 	
-	public RamIndexer(String indexName, Analyzer analyzer, AtomicInteger count, DisruptorResourcePool resourcePool) {
-		super(indexName, resourcePool);
+	public RamIndexer(Analyzer analyzer, ResourcePool resourcePool, long ordinal, long numberOfConsumers, AtomicInteger count) {
+		super("ramIndexer", analyzer, resourcePool, ordinal, numberOfConsumers);
 		this.count = count;
 		try {
-			this.analyzer = analyzer;
-			
 			this.config = new IndexWriterConfig(analyzer);
 			this.config.setRAMBufferSizeMB(MAXRAMBUFFER); //256MB缓冲区
 			this.w = new IndexWriter(directoryDetail.getDirectory(), config);
-			
 		} catch (IOException e) {
 			logger.info("<<<<<<<<<<<<<<<<<<<<<< iniRamIndexerDisruptor error");
 		}
@@ -63,25 +60,28 @@ public class RamIndexer extends AbstractIndexer implements EventHandler<ModelEve
 	}
 
 	@Override
-	public void onEvent(ModelEvent modelEvent, long paramLong, boolean paramBoolean) throws Exception {
-		Model model = modelEvent.getModel();
-		RAMDirectory directory = directoryDetail.getDirectory();
-		indexRAM(model);
-		count.incrementAndGet();
-		directoryDetail.addModelIds(model.getId());
-		resourcePool.getUpdateDataProducer().onData(directoryDetail);
-//		indexerManager.pushUpdateRam(directoryDetail);
-		if (directory.ramBytesUsed() > threshold) { //变为只读模式的时候释放writer
-			logger.debug("<<<<<<< ram byte used : " + directory.ramBytesUsed());
-			w.close();
-			resourcePool.pushReadyForSeg(directoryDetail);
-//			indexerManager.pushReadyForSeg(directoryDetail);
-			directoryDetail = new RAMDirectoryDetail(indexName);
-			
-			config = new IndexWriterConfig(analyzer); //重新获取writer
-			config.setRAMBufferSizeMB(MAXRAMBUFFER);
-			w = new IndexWriter(directoryDetail.getDirectory(), config);
+	public void onEvent(ModelEvent modelEvent, long sequence, boolean onEndOfBatch) throws Exception {
+		
+		if ((sequence % numberOfConsumers) == ordinal) {
+			logger.debug("<<<<<<<<<<<<<<<<<<< ramIndexer name : " + indexName);
+			Model model = modelEvent.getModel();
+			RAMDirectory directory = directoryDetail.getDirectory();
+			indexRAM(model);
+			count.incrementAndGet();
+			directoryDetail.addModelIds(model.getId());
+			resourcePool.getUpdateDataProducer().onData(directoryDetail);
+			if (directory.ramBytesUsed() > threshold) { //变为只读模式的时候释放writer
+				logger.debug("<<<<<<< ram byte used : " + directory.ramBytesUsed());
+				w.close();
+				resourcePool.pushReadyForSeg(directoryDetail);
+				directoryDetail = new RAMDirectoryDetail(indexName);
+				
+				config = new IndexWriterConfig(analyzer); //重新获取writer
+				config.setRAMBufferSizeMB(MAXRAMBUFFER);
+				w = new IndexWriter(directoryDetail.getDirectory(), config);
+			}
 		}
+		
 	}
 	
 }

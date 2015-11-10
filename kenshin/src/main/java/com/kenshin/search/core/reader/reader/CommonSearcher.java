@@ -41,7 +41,7 @@ public class CommonSearcher{
 				Document d = searcher.doc(docId);
 				result.add(d);
 			}
-			multiReader.close(); //TODO
+			multiReader.close(); //TODO final close
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

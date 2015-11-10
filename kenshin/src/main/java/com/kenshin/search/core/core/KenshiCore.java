@@ -7,7 +7,6 @@ import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
 import com.kenshin.search.core.reader.manager.ReaderManager;
-import com.kenshin.search.core.resource.DisruptorResourcePool;
 import com.kenshin.search.core.resource.ResourcePool;
 
 
@@ -22,24 +21,9 @@ public class KenshiCore {
 	@Resource
 	private ResourcePool resourcePool;
 	
-	private DisruptorResourcePool disruptorResourcePool;
-	
 	@PostConstruct
 	public void init() {
-		//设置一个资源池
-//		ResourcePool resourcePool = new ResourcePool();
 		
-		//启动indexerManager
-//		IndexerManager indexManager = new IndexerManager(resourcePool);
-//		indexManager.start();
-		
-		//启动indexerReader
-		ReaderManager readerManager = new ReaderManager();
-//		readerManager.start();
-		
-		
-		disruptorResourcePool = new DisruptorResourcePool();
-		disruptorResourcePool.start(readerManager);
 //		List<Model> models = new LinkedList<Model>();
 //		for(int i = 0; i < 1; i++) {
 //			Model model = new Model();
@@ -63,12 +47,12 @@ public class KenshiCore {
 //		}
 	}
 
-	public DisruptorResourcePool getDisruptorResourcePool() {
-		return disruptorResourcePool;
+	public ResourcePool getDisruptorResourcePool() {
+		return resourcePool;
 	}
 
-	public void setDisruptorResourcePool(DisruptorResourcePool disruptorResourcePool) {
-		this.disruptorResourcePool = disruptorResourcePool;
+	public void setDisruptorResourcePool(ResourcePool disruptorResourcePool) {
+		this.resourcePool = disruptorResourcePool;
 	}
 	
 //	public static void main(String[] args) throws ParseException, IOException, InterruptedException {

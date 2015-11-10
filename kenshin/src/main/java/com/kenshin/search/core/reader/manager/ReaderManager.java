@@ -15,12 +15,14 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.Query;
+import org.springframework.stereotype.Component;
 
 import com.kenshin.search.core.reader.filter.IFilterDirectoryReader;
 import com.kenshin.search.core.reader.filter.IFilterDirectoryReader.ISubReaderWrapper;
 import com.kenshin.search.core.reader.query.CommonQuery;
 import com.kenshin.search.core.reader.reader.CommonSearcher;
 
+@Component
 public class ReaderManager {
 	
 	private static final Logger logger = Logger.getLogger(ReaderManager.class);

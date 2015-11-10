@@ -8,6 +8,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -16,19 +17,19 @@ import org.apache.lucene.store.FSDirectory;
 
 import com.kenshin.search.core.model.directory.CoreDirectoryDetail;
 import com.kenshin.search.core.model.directory.SegDirectoryDetail;
-import com.kenshin.search.core.resource.DisruptorResourcePool;
+import com.kenshin.search.core.resource.ResourcePool;
 
 public class CoreIndexer extends AbstractIndexer {
+	
+	private static final Logger logger = Logger.getLogger(CoreIndexer.class);
 	
 	private static final int perTime = 30; //间隔时间
 	
 	private final Directory coreDirectory; //coreIndex的地址
-	private final Analyzer analyzer;
 	private final ScheduledExecutorService pool = Executors.newSingleThreadScheduledExecutor();
 	
-	public CoreIndexer(String indexName, Analyzer analyzer, String indexPath, DisruptorResourcePool resourcePool) throws IOException {
-		super(indexName, resourcePool);
-		this.analyzer = analyzer;
+	public CoreIndexer(Analyzer analyzer, ResourcePool resourcePool, String indexPath) throws IOException {
+		super("coreIndexer", analyzer, resourcePool, 1, 1);
 		this.coreDirectory = FSDirectory.open(Paths.get(indexPath));
 		
 		pool.scheduleAtFixedRate(new Runnable() {
@@ -37,7 +38,7 @@ public class CoreIndexer extends AbstractIndexer {
 				try {
 					indexAll();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("<<<<<<<<<<<<<<<<<<<< ini coreIndexer error : " + e.getMessage());
 				}
 			}
 		}, 1, perTime, TimeUnit.SECONDS);
@@ -47,6 +48,9 @@ public class CoreIndexer extends AbstractIndexer {
 	private void indexAll() throws IOException {
 		
 		Queue<SegDirectoryDetail> directoryDetails = resourcePool.getAllSeg();
+		
+		logger.debug("<<<<<<<<<<<<<<<<<<<< ini coreIndexer indexAll directoryDetails : " + directoryDetails.size());
+		
 		if(directoryDetails == null || directoryDetails.size() == 0)
 			return;
 		
@@ -63,7 +67,6 @@ public class CoreIndexer extends AbstractIndexer {
 		w.close();
 		
 		CoreDirectoryDetail coreDirectoryDetail = new CoreDirectoryDetail(indexName, coreDirectory, directoryDetails);
-		
 		
 		resourcePool.setCoreDirectoryDetail(coreDirectoryDetail);
 	}

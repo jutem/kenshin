@@ -1,14 +1,22 @@
 package com.kenshin.search.core.indexer;
 
-import com.kenshin.search.core.resource.DisruptorResourcePool;
+import org.apache.lucene.analysis.Analyzer;
+
+import com.kenshin.search.core.resource.ResourcePool;
 
 public class AbstractIndexer{
 	
-	protected final String indexName; //索引唯一标识
-	protected final DisruptorResourcePool resourcePool; //资源池
+	protected final String indexName; //标识名
+	protected final ResourcePool resourcePool; //资源池
+	protected final long ordinal; //标识号
+	protected final long numberOfConsumers; //此类indexer的数量
+	protected final Analyzer analyzer;
 	
-	public AbstractIndexer(String indexName, DisruptorResourcePool resourcePool) {
-		this.indexName = indexName;
+	public AbstractIndexer(String indexName, Analyzer analyzer, ResourcePool resourcePool, long ordinal, long numberOfConsumers) {
+		this.indexName = indexName + "_" + ordinal;
+		this.ordinal = ordinal;
+		this.numberOfConsumers = numberOfConsumers;
 		this.resourcePool = resourcePool;
+		this.analyzer = analyzer;
 	}
 }

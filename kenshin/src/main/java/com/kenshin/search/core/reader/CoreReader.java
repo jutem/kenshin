@@ -12,14 +12,14 @@ import org.apache.lucene.store.Directory;
 import com.kenshin.search.core.model.directory.CoreDirectoryDetail;
 import com.kenshin.search.core.model.directory.SegDirectoryDetail;
 import com.kenshin.search.core.reader.manager.ReaderManager;
-import com.kenshin.search.core.resource.DisruptorResourcePool;
+import com.kenshin.search.core.resource.ResourcePool;
 
 public class CoreReader extends AbstractReader {
 	
 	private static final Logger logger = Logger.getLogger(CoreReader.class);
 	
-	public CoreReader(DisruptorResourcePool resourcePool, ReaderManager readerManager) {
-		super(resourcePool, readerManager);
+	public CoreReader(ResourcePool resourcePool, ReaderManager readerManager) {
+		super(resourcePool, readerManager, 1, 1);
 		
 		Executors.newSingleThreadExecutor().submit(new Runnable() {
 			

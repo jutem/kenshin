@@ -11,15 +11,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.kenshin.search.core.core.KenshiCore;
 import com.kenshin.search.core.model.Model;
-import com.kenshin.search.core.resource.ResourcePool;
 
 @Controller
 public class SearchAction {
 
 	private static final Logger logger = Logger.getLogger(SearchAction.class);
-
-	@Resource
-	private ResourcePool resourcePool;
 	
 	@Resource
 	private KenshiCore kenshinCore;
