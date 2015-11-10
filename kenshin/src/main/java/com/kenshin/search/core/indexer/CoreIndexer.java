@@ -1,4 +1,4 @@
-package com.kenshin.search.core.index;
+package com.kenshin.search.core.indexer;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -14,9 +14,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
-import com.kenshin.search.core.index.manager.IndexerManager;
 import com.kenshin.search.core.model.directory.CoreDirectoryDetail;
 import com.kenshin.search.core.model.directory.SegDirectoryDetail;
+import com.kenshin.search.core.resource.DisruptorResourcePool;
 
 public class CoreIndexer extends AbstractIndexer {
 	
@@ -26,8 +26,8 @@ public class CoreIndexer extends AbstractIndexer {
 	private final Analyzer analyzer;
 	private final ScheduledExecutorService pool = Executors.newSingleThreadScheduledExecutor();
 	
-	public CoreIndexer(String indexName, Analyzer analyzer, final IndexerManager indexerManager, String indexPath) throws IOException {
-		super(indexName, indexerManager);
+	public CoreIndexer(String indexName, Analyzer analyzer, String indexPath, DisruptorResourcePool resourcePool) throws IOException {
+		super(indexName, resourcePool);
 		this.analyzer = analyzer;
 		this.coreDirectory = FSDirectory.open(Paths.get(indexPath));
 		
@@ -46,7 +46,7 @@ public class CoreIndexer extends AbstractIndexer {
 	//将碎片文件索引到总文件里
 	private void indexAll() throws IOException {
 		
-		Queue<SegDirectoryDetail> directoryDetails = indexerManager.getAllSeg();
+		Queue<SegDirectoryDetail> directoryDetails = resourcePool.getAllSeg();
 		if(directoryDetails == null || directoryDetails.size() == 0)
 			return;
 		
@@ -65,7 +65,7 @@ public class CoreIndexer extends AbstractIndexer {
 		CoreDirectoryDetail coreDirectoryDetail = new CoreDirectoryDetail(indexName, coreDirectory, directoryDetails);
 		
 		
-		indexerManager.pushCoreDetail(coreDirectoryDetail);
+		resourcePool.setCoreDirectoryDetail(coreDirectoryDetail);
 	}
 
 }

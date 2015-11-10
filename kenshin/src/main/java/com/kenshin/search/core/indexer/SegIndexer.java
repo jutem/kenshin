@@ -1,4 +1,4 @@
-package com.kenshin.search.core.index;
+package com.kenshin.search.core.indexer;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -10,37 +10,24 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
-import com.kenshin.search.core.index.manager.IndexerManager;
+import com.kenshin.search.core.disruptor.event.ModelEvent;
+import com.kenshin.search.core.disruptor.event.RAMDirectoryEvent;
 import com.kenshin.search.core.model.directory.RAMDirectoryDetail;
 import com.kenshin.search.core.model.directory.SegDirectoryDetail;
+import com.kenshin.search.core.resource.DisruptorResourcePool;
+import com.lmax.disruptor.EventHandler;
 
-public class SegIndexer extends AbstractIndexer implements Runnable{
+public class SegIndexer extends AbstractIndexer implements EventHandler<RAMDirectoryEvent>{
 	
 	private static final Logger logger = Logger.getLogger(SegIndexer.class);
 	
 	private final String segPath; //seg保存地址
 	private Analyzer analyzer;
 	
-	public SegIndexer(String indexName, Analyzer analyzer, IndexerManager indexerManager, String segPath) {
-		super(indexName, indexerManager);
+	public SegIndexer(String indexName, Analyzer analyzer, String segPath, DisruptorResourcePool resourcePool) {
+		super(indexName, resourcePool);
 		this.analyzer = analyzer;
 		this.segPath = segPath;
-	}
-	
-	public void run() {
-		while (true) {
-			// 只读状态，说明在将索引写入硬盘
-			try {
-				RAMDirectoryDetail directoryDetail = indexerManager.takeToSeg();
-				Directory directory = directoryDetail.getDirectory();
-				Directory fsdDirectory = indexFile(directory);
-				
-				SegDirectoryDetail segDirectoryDetail = new SegDirectoryDetail(indexName, directoryDetail.getIndexerName() ,fsdDirectory, directoryDetail.getModelIds()); 
-				indexerManager.pushReadyForCore(segDirectoryDetail);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
 	}
 	
 	// 将RAM写入文件
@@ -57,6 +44,16 @@ public class SegIndexer extends AbstractIndexer implements Runnable{
 		wf.close();
 		
 		return fsdDirectory;
+	}
+
+	@Override
+	public void onEvent(RAMDirectoryEvent event, long paramLong, boolean paramBoolean) throws Exception {
+		RAMDirectoryDetail directoryDetail = event.getDirectory();
+		Directory directory = directoryDetail.getDirectory();
+		Directory fsdDirectory = indexFile(directory);
+		
+		SegDirectoryDetail segDirectoryDetail = new SegDirectoryDetail(indexName, directoryDetail.getIndexerName() ,fsdDirectory, directoryDetail.getModelIds()); 
+		resourcePool.getReadyForCoreProducer().onData(segDirectoryDetail);
 	}
 
 }

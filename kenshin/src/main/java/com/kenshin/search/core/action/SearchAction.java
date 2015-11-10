@@ -9,6 +9,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.kenshin.search.core.core.KenshiCore;
 import com.kenshin.search.core.model.Model;
 import com.kenshin.search.core.resource.ResourcePool;
 
@@ -20,6 +21,10 @@ public class SearchAction {
 	@Resource
 	private ResourcePool resourcePool;
 	
+	@Resource
+	private KenshiCore kenshinCore;
+	
+	
 	/**
 	 * http://localhost:8088/kenshin/index.action?modelName=helloworld
 	 */
@@ -29,7 +34,8 @@ public class SearchAction {
 		logger.debug("<<<<<<<<<<<<<<< test");
 		Model model = new Model();
 		model.setFile1(modelName);
-		resourcePool.pushOriginData(model);
+//		resourcePool.pushOriginData(model);
+		kenshinCore.getDisruptorResourcePool().getOriginProducer().onData(model);
 	}
 	
 	/**

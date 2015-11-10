@@ -6,8 +6,8 @@ import javax.annotation.Resource;
 import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
-import com.kenshin.search.core.index.manager.IndexerManager;
 import com.kenshin.search.core.reader.manager.ReaderManager;
+import com.kenshin.search.core.resource.DisruptorResourcePool;
 import com.kenshin.search.core.resource.ResourcePool;
 
 
@@ -22,19 +22,24 @@ public class KenshiCore {
 	@Resource
 	private ResourcePool resourcePool;
 	
+	private DisruptorResourcePool disruptorResourcePool;
+	
 	@PostConstruct
 	public void init() {
 		//设置一个资源池
 //		ResourcePool resourcePool = new ResourcePool();
 		
 		//启动indexerManager
-		IndexerManager indexManager = new IndexerManager(resourcePool);
-		indexManager.start();
+//		IndexerManager indexManager = new IndexerManager(resourcePool);
+//		indexManager.start();
 		
 		//启动indexerReader
-		ReaderManager readerManager = new ReaderManager(resourcePool);
-		readerManager.start();
+		ReaderManager readerManager = new ReaderManager();
+//		readerManager.start();
 		
+		
+		disruptorResourcePool = new DisruptorResourcePool();
+		disruptorResourcePool.start(readerManager);
 //		List<Model> models = new LinkedList<Model>();
 //		for(int i = 0; i < 1; i++) {
 //			Model model = new Model();
@@ -56,6 +61,14 @@ public class KenshiCore {
 //			Document doc = docs.get(0);
 //			logger.debug("<<<<<<<<<<<<<<<<<<<<< docs 1 : " + Arrays.toString(doc.getValues("file1")));
 //		}
+	}
+
+	public DisruptorResourcePool getDisruptorResourcePool() {
+		return disruptorResourcePool;
+	}
+
+	public void setDisruptorResourcePool(DisruptorResourcePool disruptorResourcePool) {
+		this.disruptorResourcePool = disruptorResourcePool;
 	}
 	
 //	public static void main(String[] args) throws ParseException, IOException, InterruptedException {
@@ -92,4 +105,6 @@ public class KenshiCore {
 //			logger.debug("<<<<<<<<<<<<<<<<<<<<< docs 1 : " + Arrays.toString(doc.getValues("file1")));
 //		}		
 //	}
+	
+	
 }
